@@ -86,6 +86,7 @@
       ★ My Collection
       <span class="nav-tab-count" id="nav-collection-count" hidden>0</span>
     </button>
+    <button class="nav-tab" data-view="converter">💰 Multibucks</button>
   </nav>
 
   <div id="view-library">
@@ -283,6 +284,62 @@
           <span class="col-picker-count" id="col-picker-count"></span>
         </div>
         <div class="col-picker-grid" id="col-picker-grid"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ CONVERTER ════════════════════ -->
+  <section id="view-converter" hidden>
+    <div class="conv-page">
+
+      <div class="conv-hero">
+        <h2 class="conv-title">Multibucks Calculator</h2>
+        <p class="conv-sub">Convert between Multibucks (MBX) and real-world currencies.<br>
+          Base rate: <strong>500 MBX = 4.99 €</strong> &nbsp;·&nbsp; Exchange rates are approximate.</p>
+      </div>
+
+      <!-- Main converter card -->
+      <div class="conv-card">
+        <div class="conv-currency-bar">
+          <label class="conv-currency-label" for="conv-currency">Currency</label>
+          <select id="conv-currency" class="conv-currency-select"></select>
+        </div>
+
+        <div class="conv-inputs">
+          <div class="conv-field">
+            <label class="conv-field-label">Multibucks</label>
+            <div class="conv-input-wrap">
+              <input id="conv-mbx" type="number" class="conv-input" placeholder="0" min="0" step="1">
+              <span class="conv-input-unit">MBX</span>
+            </div>
+          </div>
+
+          <div class="conv-equals">≈</div>
+
+          <div class="conv-field">
+            <label class="conv-field-label">Real Money</label>
+            <div class="conv-input-wrap">
+              <input id="conv-money" type="number" class="conv-input" placeholder="0.00" min="0" step="0.01">
+              <span class="conv-input-unit" id="conv-symbol">€</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="conv-rate-note" id="conv-rate-note"></p>
+      </div>
+
+      <!-- Store packs -->
+      <div class="conv-section">
+        <div class="conv-section-title">Official Store Packs</div>
+        <div class="conv-packs-grid" id="conv-packs-grid"></div>
+      </div>
+
+      <!-- All currencies reference -->
+      <div class="conv-section">
+        <div class="conv-section-title">500 MBX in All Currencies</div>
+        <div class="conv-all-table" id="conv-all-table"></div>
+        <p class="conv-disclaimer">Exchange rates are approximate and updated periodically. Actual in-game prices may differ by region.</p>
       </div>
 
     </div>

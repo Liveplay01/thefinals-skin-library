@@ -576,19 +576,22 @@ function switchView(view) {
   document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
-  const libEl = document.getElementById('view-library');
-  const colEl = document.getElementById('view-collection');
-  if (view === 'library') {
-    libEl.hidden = false;
-    colEl.hidden = true;
-  } else {
-    libEl.hidden = true;
-    colEl.hidden = false;
+  const libEl  = document.getElementById('view-library');
+  const colEl  = document.getElementById('view-collection');
+  const convEl = document.getElementById('view-converter');
+  libEl.hidden  = view !== 'library';
+  colEl.hidden  = view !== 'collection';
+  convEl.hidden = view !== 'converter';
+  if (view === 'collection') {
     if (!pickerRendered) {
       applyColFilters();
       pickerRendered = true;
     }
     renderCollectionStats();
+  }
+  if (view === 'converter' && !converterReady) {
+    setupConverter();
+    converterReady = true;
   }
 }
 
@@ -953,4 +956,138 @@ function clearCollection() {
   if (!confirm(`Remove all ${count} skin${count !== 1 ? 's' : ''} from your collection?`)) return;
   colClear();
   refreshCollectionUI();
+}
+
+// ── Multibucks Converter ──────────────────────────────────────────────────
+
+let converterReady = false;
+
+// Base: 500 MBX = 4.99 EUR
+const MBX_EUR_RATE = 4.99 / 500; // EUR per 1 MBX
+
+const CURRENCIES = [
+  { code: 'EUR', symbol: '€',    name: 'Euro',               rate: 1.000  },
+  { code: 'USD', symbol: '$',    name: 'US Dollar',           rate: 1.090  },
+  { code: 'GBP', symbol: '£',    name: 'British Pound',       rate: 0.850  },
+  { code: 'CHF', symbol: 'Fr',   name: 'Swiss Franc',         rate: 0.940  },
+  { code: 'CAD', symbol: 'CA$',  name: 'Canadian Dollar',     rate: 1.570  },
+  { code: 'AUD', symbol: 'AU$',  name: 'Australian Dollar',   rate: 1.780  },
+  { code: 'SEK', symbol: 'kr',   name: 'Swedish Krona',       rate: 11.200 },
+  { code: 'NOK', symbol: 'kr',   name: 'Norwegian Krone',     rate: 11.750 },
+  { code: 'DKK', symbol: 'kr',   name: 'Danish Krone',        rate: 7.460  },
+  { code: 'PLN', symbol: 'zł',   name: 'Polish Zloty',        rate: 4.270  },
+  { code: 'CZK', symbol: 'Kč',   name: 'Czech Koruna',        rate: 25.200 },
+  { code: 'HUF', symbol: 'Ft',   name: 'Hungarian Forint',    rate: 400.0  },
+  { code: 'JPY', symbol: '¥',    name: 'Japanese Yen',        rate: 162.0  },
+  { code: 'CNY', symbol: '¥',    name: 'Chinese Yuan',        rate: 7.930  },
+  { code: 'KRW', symbol: '₩',    name: 'South Korean Won',    rate: 1580.0 },
+  { code: 'SGD', symbol: 'S$',   name: 'Singapore Dollar',    rate: 1.470  },
+  { code: 'BRL', symbol: 'R$',   name: 'Brazilian Real',      rate: 6.500  },
+  { code: 'MXN', symbol: 'MX$',  name: 'Mexican Peso',        rate: 23.000 },
+  { code: 'ARS', symbol: '$',    name: 'Argentine Peso',      rate: 1100.0 },
+  { code: 'INR', symbol: '₹',    name: 'Indian Rupee',        rate: 91.0   },
+  { code: 'TRY', symbol: '₺',    name: 'Turkish Lira',        rate: 38.0   },
+];
+
+const MBX_PACKS = [500, 1000, 2000, 5000, 11000];
+
+function setupConverter() {
+  const sel = document.getElementById('conv-currency');
+  if (!sel) return;
+
+  CURRENCIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = `${c.code} (${c.symbol}) — ${c.name}`;
+    sel.appendChild(opt);
+  });
+
+  const mbxInput   = document.getElementById('conv-mbx');
+  const moneyInput = document.getElementById('conv-money');
+
+  mbxInput.addEventListener('input', () => {
+    const mbx = parseFloat(mbxInput.value);
+    const cur  = activeCurrency();
+    if (!isNaN(mbx) && mbx >= 0) {
+      moneyInput.value = (mbx * MBX_EUR_RATE * cur.rate).toFixed(decimalsFor(cur));
+    } else {
+      moneyInput.value = '';
+    }
+    updateRateNote(cur);
+  });
+
+  moneyInput.addEventListener('input', () => {
+    const money = parseFloat(moneyInput.value);
+    const cur   = activeCurrency();
+    if (!isNaN(money) && money >= 0) {
+      mbxInput.value = Math.round(money / (MBX_EUR_RATE * cur.rate));
+    } else {
+      mbxInput.value = '';
+    }
+    updateRateNote(cur);
+  });
+
+  sel.addEventListener('change', () => {
+    const cur = activeCurrency();
+    document.getElementById('conv-symbol').textContent = cur.symbol;
+    // Recalculate from MBX side if filled
+    const mbx = parseFloat(mbxInput.value);
+    if (!isNaN(mbx) && mbx >= 0) {
+      moneyInput.value = (mbx * MBX_EUR_RATE * cur.rate).toFixed(decimalsFor(cur));
+    }
+    updateRateNote(cur);
+    renderPacks(cur);
+  });
+
+  // Initial render
+  const cur = activeCurrency();
+  document.getElementById('conv-symbol').textContent = cur.symbol;
+  updateRateNote(cur);
+  renderPacks(cur);
+  renderAllCurrencies();
+}
+
+function activeCurrency() {
+  const code = document.getElementById('conv-currency').value;
+  return CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+}
+
+function decimalsFor(cur) {
+  return cur.rate >= 100 ? 0 : 2;
+}
+
+function fmtPrice(value, cur) {
+  return `${cur.symbol} ${value.toFixed(decimalsFor(cur))}`;
+}
+
+function updateRateNote(cur) {
+  const el = document.getElementById('conv-rate-note');
+  if (!el) return;
+  const price = (500 * MBX_EUR_RATE * cur.rate).toFixed(decimalsFor(cur));
+  el.textContent = `1 MBX ≈ ${cur.symbol} ${(MBX_EUR_RATE * cur.rate).toFixed(decimalsFor(cur) + 2)}  ·  500 MBX = ${cur.symbol} ${price}`;
+}
+
+function renderPacks(cur) {
+  const grid = document.getElementById('conv-packs-grid');
+  if (!grid) return;
+  grid.innerHTML = MBX_PACKS.map(pack => {
+    const price = pack * MBX_EUR_RATE * cur.rate;
+    return `<div class="pack-card">
+      <div class="pack-mbx">${pack.toLocaleString()} <span class="pack-unit">MBX</span></div>
+      <div class="pack-price">${fmtPrice(price, cur)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAllCurrencies() {
+  const el = document.getElementById('conv-all-table');
+  if (!el) return;
+  el.innerHTML = CURRENCIES.map(cur => {
+    const price = 500 * MBX_EUR_RATE * cur.rate;
+    return `<div class="conv-currency-row">
+      <span class="conv-currency-code">${cur.code}</span>
+      <span class="conv-currency-name">${cur.name}</span>
+      <span class="conv-currency-price">${fmtPrice(price, cur)}</span>
+    </div>`;
+  }).join('');
 }
