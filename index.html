@@ -79,6 +79,17 @@
     <div class="hero-bottom-fade"></div>
   </section>
 
+  <!-- ════════════════════════════════════ NAV ═════════════════════════ -->
+  <nav class="page-nav" id="page-nav">
+    <button class="nav-tab active" data-view="library">⚡ Skin Library</button>
+    <button class="nav-tab" data-view="collection">
+      ★ My Collection
+      <span class="nav-tab-count" id="nav-collection-count" hidden>0</span>
+    </button>
+  </nav>
+
+  <div id="view-library">
+
   <!-- ════════════════════════════════════ FILTER BAR ══════════════════ -->
   <div class="filter-bar" id="filter-bar">
     <div class="filter-bar-inner">
@@ -185,6 +196,97 @@
     </div>
 
   </main>
+
+  </div><!-- /#view-library -->
+
+  <!-- ══════════════════════════════════ MY COLLECTION ══════════════════ -->
+  <section id="view-collection" hidden>
+    <div class="collection-layout">
+
+      <!-- Left: Stats panel -->
+      <aside class="col-stats-panel">
+        <div class="col-panel-header">
+          <span class="col-panel-title">Collection Stats</span>
+          <div class="col-action-row">
+            <button class="btn-col-action btn-export-csv" id="btn-export-csv">↓ CSV</button>
+            <button class="btn-col-action btn-copy-text" id="btn-copy-text">⎘ Copy</button>
+            <button class="btn-col-action btn-clear-col" id="btn-clear-col">✕ Clear</button>
+          </div>
+        </div>
+
+        <div class="col-summary-hero">
+          <div class="col-summary-total" id="col-total-count">0 skins</div>
+          <div class="col-summary-value" id="col-total-value">0 MFC</div>
+        </div>
+
+        <div class="col-breakdown-section">
+          <div class="col-breakdown-title">By Tier</div>
+          <div class="col-breakdown-rows" id="col-tier-breakdown"></div>
+        </div>
+
+        <div class="col-breakdown-section">
+          <div class="col-breakdown-title">By Rarity</div>
+          <div class="col-breakdown-rows" id="col-rarity-breakdown"></div>
+        </div>
+
+        <div class="col-breakdown-section">
+          <div class="col-breakdown-title">By Build</div>
+          <div class="col-breakdown-rows" id="col-build-breakdown"></div>
+        </div>
+
+        <div class="col-highlight" id="col-highlight" hidden>
+          <div class="col-highlight-label">Most Valuable</div>
+          <div class="col-highlight-name" id="col-highlight-name"></div>
+          <div class="col-highlight-val" id="col-highlight-val"></div>
+        </div>
+
+        <div class="col-breakdown-section">
+          <div class="col-breakdown-title">Selected Skins</div>
+          <div class="col-skin-list" id="col-skin-list">
+            <div class="col-list-empty">No skins selected yet.<br>Browse the picker and click to add.</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right: Picker -->
+      <div class="col-picker-area">
+        <div class="col-picker-controls">
+          <div class="search-wrap col-search-wrap">
+            <svg class="search-ico" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input type="search" id="col-search" placeholder="Search skins…" autocomplete="off" spellcheck="false">
+            <button class="search-clear" id="col-search-clear" hidden aria-label="Clear search">✕</button>
+          </div>
+          <div class="filter-controls">
+            <select id="col-filter-build">
+              <option value="all">All Builds</option>
+              <option value="Light">Light</option>
+              <option value="Medium">Medium</option>
+              <option value="Heavy">Heavy</option>
+            </select>
+            <select id="col-filter-rarity">
+              <option value="all">All Rarities</option>
+              <option value="MYTHIC">Mythic</option>
+              <option value="LEGENDARY">Legendary</option>
+              <option value="EPIC">Epic</option>
+              <option value="RARE">Rare</option>
+              <option value="COMMON">Common</option>
+            </select>
+            <select id="col-sort">
+              <option value="tier">Sort: Tier</option>
+              <option value="value">Sort: Value ↓</option>
+              <option value="name">Sort: Name</option>
+            </select>
+          </div>
+          <span class="col-picker-count" id="col-picker-count"></span>
+        </div>
+        <div class="col-picker-grid" id="col-picker-grid"></div>
+      </div>
+
+    </div>
+  </section>
 
   <!-- ═══════════════════════════════════════ MODAL ════════════════════ -->
   <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-skin-name">

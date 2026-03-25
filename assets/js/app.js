@@ -42,11 +42,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupScrollListener();
   setupModalListeners();
   setupLegendFilters();
+  setupPageNav();
+  setupColFilters();
+  setupCollectionActions();
 
   try {
     await loadData();
     setupFilters();
     applyFilters();
+    updateNavCollectionCount();
   } catch (err) {
     console.error('Failed to load skin data:', err);
     showLoadError();
@@ -343,6 +347,7 @@ function createCard(skin) {
   const valueStr = skin.estimated_value > 0
     ? `${skin.estimated_value.toLocaleString()} MFC`
     : '—';
+  const meta = getCardMeta(skin);
 
   card.innerHTML = `
     <div class="card-tier-stripe"></div>
@@ -358,6 +363,7 @@ function createCard(skin) {
     <div class="card-body">
       <div class="card-weapon">${escHtml(skin.weapon)}</div>
       <div class="card-name">${escHtml(skin.name)}</div>
+      <div class="card-meta ${meta.cssClass}">${escHtml(meta.text)}</div>
       <div class="card-footer">
         <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span>
         <span class="card-value">${valueStr}</span>
@@ -529,4 +535,422 @@ function escHtml(str) {
 
 function titleCase(str) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+// ── Card Metadata ──────────────────────────────────────────────────────────
+
+function getCardMeta(skin) {
+  const src = skin.source || '';
+  if (src === 'Open Beta' || src === 'Close Beta') {
+    return { text: src === 'Open Beta' ? 'Open Beta' : 'Closed Beta', cssClass: 'card-meta--unobtainable' };
+  }
+  if (src === 'Ranked') {
+    const text = skin.ranked_tier ? `${skin.ranked_tier} Ranked` : 'Ranked';
+    return { text, cssClass: 'card-meta--ranked' };
+  }
+  if (src === 'Battle Pass') {
+    const text = skin.season ? `${skin.season} Battle Pass` : 'Battle Pass';
+    return { text, cssClass: '' };
+  }
+  if (src === 'Store') {
+    const text = skin.cost > 0 ? `Store · ${skin.cost.toLocaleString()} MB` : 'Store';
+    return { text, cssClass: '' };
+  }
+  if (src === 'Twitch Drop') return { text: 'Twitch Drop', cssClass: 'card-meta--twitch' };
+  if (src === 'Default')     return { text: 'Default',     cssClass: 'card-meta--muted' };
+  return { text: src || '—', cssClass: '' };
+}
+
+// ── Page Navigation ────────────────────────────────────────────────────────
+
+let currentView = 'library';
+
+function setupPageNav() {
+  document.querySelectorAll('.nav-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  const libEl = document.getElementById('view-library');
+  const colEl = document.getElementById('view-collection');
+  if (view === 'library') {
+    libEl.hidden = false;
+    colEl.hidden = true;
+  } else {
+    libEl.hidden = true;
+    colEl.hidden = false;
+    if (!pickerRendered) {
+      applyColFilters();
+      pickerRendered = true;
+    }
+    renderCollectionStats();
+  }
+}
+
+// ── localStorage Helpers ──────────────────────────────────────────────────
+
+const COLLECTION_KEY = 'tfinals_collection';
+let colMemory = [];
+let lsAvailable = (() => {
+  try { localStorage.setItem('__tf', '1'); localStorage.removeItem('__tf'); return true; }
+  catch(e) { return false; }
+})();
+
+function colLoad() {
+  if (!lsAvailable) return [...colMemory];
+  try { return JSON.parse(localStorage.getItem(COLLECTION_KEY) || '[]'); } catch(e) { return []; }
+}
+function colSave(ids) {
+  if (!lsAvailable) { colMemory = [...ids]; return; }
+  try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids)); } catch(e) {}
+}
+function colAdd(id)    { const ids = colLoad(); if (!ids.includes(id)) colSave([...ids, id]); }
+function colRemove(id) { colSave(colLoad().filter(x => x !== id)); }
+function colToggle(id) { colLoad().includes(id) ? colRemove(id) : colAdd(id); }
+function colHas(id)    { return colLoad().includes(id); }
+function colGetSkins() { const ids = new Set(colLoad()); return allSkins.filter(s => ids.has(s.id)); }
+function colClear()    { colSave([]); }
+
+// ── Collection State ──────────────────────────────────────────────────────
+
+const colFilters = { search: '', build: 'all', rarity: 'all', sort: 'tier' };
+let pickerRendered = false;
+let pickerObserver = null;
+let colFilteredSkins = [];
+
+// ── Nav Badge ─────────────────────────────────────────────────────────────
+
+function updateNavCollectionCount() {
+  const badge = document.getElementById('nav-collection-count');
+  if (!badge) return;
+  const count = colLoad().length;
+  badge.textContent = count;
+  badge.hidden = count === 0;
+}
+
+// ── Stats Rendering ───────────────────────────────────────────────────────
+
+function renderCollectionStats() {
+  const skins    = colGetSkins();
+  const totalVal = skins.reduce((s, k) => s + (k.estimated_value || 0), 0);
+
+  const countEl = document.getElementById('col-total-count');
+  const valEl   = document.getElementById('col-total-value');
+  if (countEl) countEl.textContent = `${skins.length} skin${skins.length !== 1 ? 's' : ''}`;
+  if (valEl)   valEl.textContent   = `${totalVal.toLocaleString()} MFC`;
+
+  renderTierBreakdown(skins);
+  renderRarityBreakdown(skins);
+  renderBuildBreakdown(skins);
+  renderHighlight(skins);
+  renderColList(skins);
+}
+
+function renderTierBreakdown(skins) {
+  const el = document.getElementById('col-tier-breakdown');
+  if (!el) return;
+  el.innerHTML = ['S','A','B','C','D'].map(tier => {
+    const ts    = skins.filter(s => s.tier === tier);
+    const count = ts.length;
+    const val   = ts.reduce((s, k) => s + (k.estimated_value || 0), 0);
+    return `<div class="col-breakdown-row${count === 0 ? ' zero' : ''}">
+      <span class="col-brow-label">
+        <span class="col-brow-dot" style="background:${TIER_COLORS[tier]}"></span>
+        <span>${tier} — ${TIER_LABELS[tier]}</span>
+      </span>
+      <span class="col-brow-count">${count}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MFC' : '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+const RARITY_ARR = ['MYTHIC','LEGENDARY','EPIC','RARE','COMMON'];
+
+function renderRarityBreakdown(skins) {
+  const el = document.getElementById('col-rarity-breakdown');
+  if (!el) return;
+  el.innerHTML = RARITY_ARR.map(rarity => {
+    const rs    = skins.filter(s => s.rarity === rarity);
+    const count = rs.length;
+    const val   = rs.reduce((s, k) => s + (k.estimated_value || 0), 0);
+    const label = rarity.charAt(0) + rarity.slice(1).toLowerCase();
+    return `<div class="col-breakdown-row${count === 0 ? ' zero' : ''}">
+      <span class="col-brow-label">
+        <span class="col-brow-dot" style="background:${RARITY_COLORS[rarity]}"></span>
+        <span>${label}</span>
+      </span>
+      <span class="col-brow-count">${count}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MFC' : '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+const BUILD_COLORS = { Light: '#4ade80', Medium: '#60a5fa', Heavy: '#f87171' };
+
+function renderBuildBreakdown(skins) {
+  const el = document.getElementById('col-build-breakdown');
+  if (!el) return;
+  el.innerHTML = ['Light','Medium','Heavy'].map(build => {
+    const count = skins.filter(s => s.build === build).length;
+    return `<div class="col-breakdown-row${count === 0 ? ' zero' : ''}">
+      <span class="col-brow-label">
+        <span class="col-brow-dot" style="background:${BUILD_COLORS[build]}"></span>
+        <span>${build}</span>
+      </span>
+      <span class="col-brow-count">${count}</span>
+      <span class="col-brow-val"></span>
+    </div>`;
+  }).join('');
+}
+
+function renderHighlight(skins) {
+  const box = document.getElementById('col-highlight');
+  if (!box) return;
+  if (skins.length === 0) { box.hidden = true; return; }
+  const best = skins.reduce((a, b) => b.estimated_value > a.estimated_value ? b : a);
+  box.hidden = false;
+  document.getElementById('col-highlight-name').textContent = best.full_name;
+  document.getElementById('col-highlight-val').textContent  = `${(best.estimated_value || 0).toLocaleString()} MFC`;
+}
+
+function renderColList(skins) {
+  const el = document.getElementById('col-skin-list');
+  if (!el) return;
+  if (skins.length === 0) {
+    el.innerHTML = `<div class="col-list-empty">No skins selected yet.<br>Browse the picker and click to add.</div>`;
+    return;
+  }
+  const sorted = [...skins].sort((a, b) =>
+    (TIER_ORDER[a.tier] - TIER_ORDER[b.tier]) || (b.estimated_value - a.estimated_value)
+  );
+  el.innerHTML = sorted.map(skin => `
+    <div class="col-list-row">
+      <img class="col-list-thumb" src="${escHtml(skin.image_url || '')}" alt="" loading="lazy" onerror="this.style.opacity='0.15'">
+      <div class="col-list-info">
+        <div class="col-list-name">${escHtml(skin.name)}</div>
+        <div class="col-list-sub">${escHtml(skin.weapon)} <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span></div>
+      </div>
+      <span class="col-list-val">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MFC' : '—'}</span>
+      <button class="col-list-remove" data-id="${escHtml(skin.id)}" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.col-list-remove').forEach(btn => {
+    btn.addEventListener('click', () => { colRemove(btn.dataset.id); refreshCollectionUI(); });
+  });
+}
+
+function refreshCollectionUI() {
+  updateNavCollectionCount();
+  if (currentView === 'collection') {
+    renderCollectionStats();
+    renderPickerGrid();
+  }
+}
+
+// ── Collection Picker Filters ─────────────────────────────────────────────
+
+function setupColFilters() {
+  const searchEl = document.getElementById('col-search');
+  const clearEl  = document.getElementById('col-search-clear');
+  if (!searchEl) return;
+
+  searchEl.addEventListener('input', debounce(e => {
+    colFilters.search = e.target.value.trim().toLowerCase();
+    clearEl.hidden = !colFilters.search;
+    if (pickerRendered) applyColFilters();
+  }, 140));
+
+  clearEl.addEventListener('click', () => {
+    searchEl.value = ''; colFilters.search = ''; clearEl.hidden = true;
+    if (pickerRendered) applyColFilters();
+  });
+
+  [['col-filter-build','build'],['col-filter-rarity','rarity'],['col-sort','sort']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', e => {
+      colFilters[key] = e.target.value;
+      if (pickerRendered) applyColFilters();
+    });
+  });
+}
+
+function setupCollectionActions() {
+  const csvBtn   = document.getElementById('btn-export-csv');
+  const copyBtn  = document.getElementById('btn-copy-text');
+  const clearBtn = document.getElementById('btn-clear-col');
+  if (csvBtn)   csvBtn.addEventListener('click', exportCSV);
+  if (copyBtn)  copyBtn.addEventListener('click', copyCollectionText);
+  if (clearBtn) clearBtn.addEventListener('click', clearCollection);
+}
+
+function applyColFilters() {
+  const f = colFilters;
+  colFilteredSkins = allSkins.filter(s => {
+    if (f.search && !`${s.full_name} ${s.weapon}`.toLowerCase().includes(f.search)) return false;
+    if (f.build  !== 'all' && s.build  !== f.build)  return false;
+    if (f.rarity !== 'all' && s.rarity !== f.rarity)  return false;
+    return true;
+  });
+
+  colFilteredSkins.sort((a, b) => {
+    switch (f.sort) {
+      case 'value': return b.estimated_value - a.estimated_value;
+      case 'name':  return a.full_name.localeCompare(b.full_name);
+      default:
+        return (TIER_ORDER[a.tier] - TIER_ORDER[b.tier])
+            || (RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity])
+            || (b.estimated_value - a.estimated_value);
+    }
+  });
+
+  const countEl = document.getElementById('col-picker-count');
+  if (countEl) countEl.textContent = `${colFilteredSkins.length.toLocaleString()} skins`;
+  renderPickerGrid();
+}
+
+// ── Picker Grid ───────────────────────────────────────────────────────────
+
+function renderPickerGrid() {
+  const grid = document.getElementById('col-picker-grid');
+  if (!grid) return;
+
+  if (pickerObserver) { pickerObserver.disconnect(); pickerObserver = null; }
+
+  const frag = document.createDocumentFragment();
+  colFilteredSkins.forEach(skin => frag.appendChild(createPickerCard(skin)));
+  grid.innerHTML = '';
+  grid.appendChild(frag);
+
+  pickerObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('visible'); pickerObserver.unobserve(entry.target); }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px -10px 0px' });
+
+  Array.from(grid.children).forEach((card, i) => {
+    if (i < 30) setTimeout(() => card.classList.add('visible'), i * 20);
+    else pickerObserver.observe(card);
+  });
+}
+
+function createPickerCard(skin) {
+  const card     = document.createElement('div');
+  const selected = colHas(skin.id);
+  card.className = `picker-card${selected ? ' picker-card--selected' : ''}`;
+
+  const tierColor = TIER_COLORS[skin.tier] || '#9e9e9e';
+  card.style.setProperty('--tier-color',  tierColor);
+  card.style.setProperty('--tier-glow',   tierColor + '30');
+  card.style.setProperty('--tier-border', tierColor + '60');
+
+  card.innerHTML = `
+    <div class="card-tier-stripe"></div>
+    <div class="card-image-wrap">
+      <img class="card-img" src="${escHtml(skin.image_url || '')}" alt="${escHtml(skin.full_name)}" loading="lazy" decoding="async">
+      <div class="card-tier-badge ctb-${skin.tier.toLowerCase()}">${skin.tier}</div>
+      ${skin.will_not_return ? '<div class="card-wnr" title="Will Not Return">🔥</div>' : ''}
+      <div class="picker-check">✓</div>
+    </div>
+    <div class="card-body">
+      <div class="card-weapon">${escHtml(skin.weapon)}</div>
+      <div class="card-name">${escHtml(skin.name)}</div>
+      <div class="card-footer">
+        <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span>
+        <span class="card-value">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MFC' : '—'}</span>
+      </div>
+    </div>
+  `;
+
+  card.querySelector('.card-img').addEventListener('error', function() {
+    const wrap = card.querySelector('.card-image-wrap');
+    if (wrap) wrap.classList.add('no-image');
+    this.remove();
+  });
+
+  card.addEventListener('click', () => { colToggle(skin.id); refreshCollectionUI(); });
+  return card;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+
+function exportCSV() {
+  const skins = colGetSkins();
+  if (skins.length === 0) { alert('No skins in your collection yet!'); return; }
+
+  const headers = ['Name','Weapon','Build','Rarity','Tier','Tier Label','Est. Value (MFC)','Source','Season','Will Not Return'];
+  const rows = skins.map(s => [
+    s.full_name, s.weapon, s.build, s.rarity, s.tier,
+    s.tier_label || TIER_LABELS[s.tier] || '',
+    s.estimated_value || 0,
+    s.source || '', s.season || '',
+    s.will_not_return ? 'true' : 'false',
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const date = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `my-finals-collection-${date}.csv` });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyCollectionText() {
+  const skins = colGetSkins();
+  if (skins.length === 0) { alert('No skins in your collection yet!'); return; }
+
+  const sorted   = [...skins].sort((a, b) =>
+    (TIER_ORDER[a.tier] - TIER_ORDER[b.tier]) || (b.estimated_value - a.estimated_value)
+  );
+  const totalVal = skins.reduce((s, k) => s + (k.estimated_value || 0), 0);
+
+  const tc = {}, bc = {};
+  sorted.forEach(s => { tc[s.tier] = (tc[s.tier] || 0) + 1; bc[s.build] = (bc[s.build] || 0) + 1; });
+
+  const tierLine  = ['S','A','B','C','D'].filter(t => tc[t]).map(t => `${t}: ${tc[t]}`).join('  ');
+  const buildLine = ['Light','Medium','Heavy'].filter(b => bc[b]).map(b => `${b}: ${bc[b]}`).join('  ');
+
+  const text = [
+    `My Finals Collection — ${skins.length} skin${skins.length !== 1 ? 's' : ''} · ${totalVal.toLocaleString()} MFC`,
+    '══════════════════════════════════════════════',
+    ...sorted.map(s => `[${s.tier}] ${s.full_name} · ${s.weapon} · ${s.rarity} · ~${(s.estimated_value || 0).toLocaleString()} MFC`),
+    '──────────────────────────────────────────────',
+    tierLine,
+    buildLine,
+    'Generated by The Finals Skin Library',
+  ].join('\n');
+
+  const btn  = document.getElementById('btn-copy-text');
+  const done = () => { if (btn) { const o = btn.textContent; btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = o, 2000); } };
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement('textarea'), {
+    value: text, style: 'position:fixed;opacity:0',
+  });
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  ta.remove();
+  cb();
+}
+
+function clearCollection() {
+  const count = colLoad().length;
+  if (count === 0) return;
+  if (!confirm(`Remove all ${count} skin${count !== 1 ? 's' : ''} from your collection?`)) return;
+  colClear();
+  refreshCollectionUI();
 }
