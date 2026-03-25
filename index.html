@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Finals complete weapon skin library — browse all skins ranked by exclusivity tier with estimated collector values.">
+  <meta property="og:title" content="The Finals Skin Library">
+  <meta property="og:description" content="927 weapon skins ranked S–D by exclusivity. Updated weekly from the official wiki.">
+  <meta property="og:type" content="website">
+  <title>The Finals — Skin Library</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ HERO ══════════════════════ -->
+  <section class="hero" id="hero">
+    <div class="hero-orb orb-1"></div>
+    <div class="hero-orb orb-2"></div>
+    <div class="hero-orb orb-3"></div>
+    <div class="hero-grid-overlay"></div>
+    <div class="hero-scanlines"></div>
+    <div class="hero-particles" id="hero-particles"></div>
+
+    <div class="hero-content">
+      <p class="hero-eyebrow">
+        <span class="eyebrow-line"></span>
+        COMMUNITY DATABASE
+        <span class="eyebrow-line"></span>
+      </p>
+
+      <h1 class="hero-title">
+        <span class="glitch" data-text="THE FINALS">THE FINALS</span>
+      </h1>
+      <div class="hero-title-sub">
+        <span class="sub-dash"></span>
+        SKIN LIBRARY
+        <span class="sub-dash"></span>
+      </div>
+
+      <p class="hero-description">
+        Every weapon skin ranked by exclusivity. Updated weekly from the official wiki.
+      </p>
+
+      <div class="hero-stats-bar">
+        <div class="hstat">
+          <div class="hstat-val" id="stat-total">—</div>
+          <div class="hstat-lbl">Total Skins</div>
+        </div>
+        <div class="hstat-sep"></div>
+        <div class="hstat">
+          <div class="hstat-val gold" id="stat-s-tier">—</div>
+          <div class="hstat-lbl">S&#8209;Tier</div>
+        </div>
+        <div class="hstat-sep"></div>
+        <div class="hstat">
+          <div class="hstat-val pink" id="stat-wnr">—</div>
+          <div class="hstat-lbl">Unobtainable</div>
+        </div>
+        <div class="hstat-sep"></div>
+        <div class="hstat">
+          <div class="hstat-val accent" id="stat-updated">—</div>
+          <div class="hstat-lbl">Last Updated</div>
+        </div>
+      </div>
+
+      <a href="#filter-bar" class="hero-cta" id="hero-cta">
+        EXPLORE ALL SKINS
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 3v10M3 8l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+
+    <div class="hero-bottom-fade"></div>
+  </section>
+
+  <!-- ════════════════════════════════════ FILTER BAR ══════════════════ -->
+  <div class="filter-bar" id="filter-bar">
+    <div class="filter-bar-inner">
+
+      <div class="search-wrap">
+        <svg class="search-ico" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="search" id="search" placeholder="Search skins or weapons…" autocomplete="off" spellcheck="false">
+        <button class="search-clear" id="search-clear" hidden aria-label="Clear search">✕</button>
+      </div>
+
+      <div class="filter-controls">
+        <select id="filter-build" title="Filter by build">
+          <option value="all">All Builds</option>
+          <option value="Light">Light</option>
+          <option value="Medium">Medium</option>
+          <option value="Heavy">Heavy</option>
+        </select>
+
+        <select id="filter-weapon" title="Filter by weapon">
+          <option value="all">All Weapons</option>
+        </select>
+
+        <select id="filter-rarity" title="Filter by rarity">
+          <option value="all">All Rarities</option>
+          <option value="MYTHIC">Mythic</option>
+          <option value="LEGENDARY">Legendary</option>
+          <option value="EPIC">Epic</option>
+          <option value="RARE">Rare</option>
+          <option value="COMMON">Common</option>
+        </select>
+
+        <select id="filter-tier" title="Filter by tier">
+          <option value="all">All Tiers</option>
+          <option value="S">S — Unobtainable</option>
+          <option value="A">A — Highly Limited</option>
+          <option value="B">B — Ranked / Special</option>
+          <option value="C">C — Earnable</option>
+          <option value="D">D — Basic</option>
+        </select>
+
+        <select id="sort-by" title="Sort order">
+          <option value="tier">Sort: Tier</option>
+          <option value="value">Sort: Value ↓</option>
+          <option value="rarity">Sort: Rarity</option>
+          <option value="name">Sort: Name</option>
+          <option value="weapon">Sort: Weapon</option>
+        </select>
+      </div>
+
+      <div class="result-info">
+        <span id="result-count"></span>
+        <button class="reset-btn" id="reset-btn" hidden title="Clear all filters">✕ Reset</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ GRID ═══════════════════════ -->
+  <main class="main-content" id="main-content">
+
+    <div class="tier-legend" id="tier-legend">
+      <div class="legend-item" data-tier="S">
+        <span class="legend-dot tier-s-dot"></span>
+        <span class="legend-tier">S</span>
+        <span class="legend-label">Unobtainable</span>
+      </div>
+      <div class="legend-item" data-tier="A">
+        <span class="legend-dot tier-a-dot"></span>
+        <span class="legend-tier">A</span>
+        <span class="legend-label">Highly Limited</span>
+      </div>
+      <div class="legend-item" data-tier="B">
+        <span class="legend-dot tier-b-dot"></span>
+        <span class="legend-tier">B</span>
+        <span class="legend-label">Ranked / Special</span>
+      </div>
+      <div class="legend-item" data-tier="C">
+        <span class="legend-dot tier-c-dot"></span>
+        <span class="legend-tier">C</span>
+        <span class="legend-label">Earnable</span>
+      </div>
+      <div class="legend-item" data-tier="D">
+        <span class="legend-dot tier-d-dot"></span>
+        <span class="legend-tier">D</span>
+        <span class="legend-label">Basic</span>
+      </div>
+    </div>
+
+    <div class="skin-grid" id="skin-grid">
+      <!-- Cards injected by app.js -->
+      <div class="loading-state" id="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading skin database…</p>
+      </div>
+    </div>
+
+    <div class="no-results" id="no-results" hidden>
+      <div class="no-results-icon">⚡</div>
+      <p>No skins match your filters.</p>
+      <button class="btn-ghost" onclick="document.getElementById('reset-btn').click()">Clear filters</button>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════ MODAL ════════════════════ -->
+  <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-skin-name">
+    <div class="modal" id="modal">
+
+      <button class="modal-close" id="modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <div class="modal-left">
+        <div class="modal-image-wrap" id="modal-image-wrap">
+          <img id="modal-img" src="" alt="" loading="lazy">
+          <div class="modal-img-glow" id="modal-img-glow"></div>
+        </div>
+        <div class="modal-build-badge" id="modal-build-badge"></div>
+      </div>
+
+      <div class="modal-right">
+
+        <div class="modal-top-badges">
+          <span class="tier-pill" id="modal-tier-pill"></span>
+          <span class="rarity-pill" id="modal-rarity-pill"></span>
+          <span class="wnr-pill" id="modal-wnr-pill" hidden>🔥 Will Not Return</span>
+        </div>
+
+        <h2 class="modal-skin-name" id="modal-skin-name"></h2>
+        <p class="modal-weapon-line" id="modal-weapon-line"></p>
+
+        <div class="modal-value-hero" id="modal-value-hero">
+          <span class="mvh-label">Est. Collector Value</span>
+          <span class="mvh-value" id="modal-value-num"></span>
+        </div>
+
+        <div class="modal-detail-grid">
+          <div class="md-item">
+            <span class="md-label">Source</span>
+            <span class="md-value" id="md-source"></span>
+          </div>
+          <div class="md-item">
+            <span class="md-label">Build</span>
+            <span class="md-value" id="md-build"></span>
+          </div>
+          <div class="md-item" id="md-ranked-row" hidden>
+            <span class="md-label">Ranked Tier</span>
+            <span class="md-value" id="md-ranked"></span>
+          </div>
+          <div class="md-item" id="md-cost-row" hidden>
+            <span class="md-label">Store Price</span>
+            <span class="md-value" id="md-cost"></span>
+          </div>
+          <div class="md-item">
+            <span class="md-label">Status</span>
+            <span class="md-value" id="md-status"></span>
+          </div>
+        </div>
+
+        <a class="btn-wiki" id="modal-wiki" href="" target="_blank" rel="noopener noreferrer" hidden>
+          View on Wiki
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 10L10 2M10 2H5M10 2v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ FOOTER ════════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">⚡ THE FINALS SKIN LIBRARY</span>
+        <p class="footer-note">Community project. Not affiliated with Embark Studios or The Finals.</p>
+      </div>
+      <div class="footer-meta" id="footer-meta"></div>
+      <div class="footer-links">
+        <a href="https://www.thefinals.wiki" target="_blank" rel="noopener">Wiki</a>
+        <a href="https://www.reachthefinals.com" target="_blank" rel="noopener">Official Site</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
