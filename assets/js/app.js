@@ -576,12 +576,18 @@ function switchView(view) {
   document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
-  const libEl  = document.getElementById('view-library');
-  const colEl  = document.getElementById('view-collection');
-  const convEl = document.getElementById('view-converter');
-  libEl.hidden  = view !== 'library';
-  colEl.hidden  = view !== 'collection';
-  convEl.hidden = view !== 'converter';
+  const views = { library: 'view-library', collection: 'view-collection', converter: 'view-converter' };
+  Object.entries(views).forEach(([v, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (v === view) {
+      el.removeAttribute('hidden');
+      el.style.display = '';
+    } else {
+      el.setAttribute('hidden', '');
+      el.style.display = 'none';
+    }
+  });
   if (view === 'collection') {
     if (!pickerRendered) {
       applyColFilters();
@@ -667,7 +673,7 @@ function renderTierBreakdown(skins) {
         <span>${tier} — ${TIER_LABELS[tier]}</span>
       </span>
       <span class="col-brow-count">${count}</span>
-      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MFC' : '—'}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MBX' : '—'}</span>
     </div>`;
   }).join('');
 }
@@ -688,7 +694,7 @@ function renderRarityBreakdown(skins) {
         <span>${label}</span>
       </span>
       <span class="col-brow-count">${count}</span>
-      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MFC' : '—'}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MBX' : '—'}</span>
     </div>`;
   }).join('');
 }
@@ -738,7 +744,7 @@ function renderColList(skins) {
         <div class="col-list-name">${escHtml(skin.name)}</div>
         <div class="col-list-sub">${escHtml(skin.weapon)} <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span></div>
       </div>
-      <span class="col-list-val">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MFC' : '—'}</span>
+      <span class="col-list-val">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MBX' : '—'}</span>
       <button class="col-list-remove" data-id="${escHtml(skin.id)}" title="Remove">✕</button>
     </div>
   `).join('');
@@ -865,7 +871,7 @@ function createPickerCard(skin) {
       <div class="card-name">${escHtml(skin.name)}</div>
       <div class="card-footer">
         <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span>
-        <span class="card-value">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MFC' : '—'}</span>
+        <span class="card-value">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MBX' : '—'}</span>
       </div>
     </div>
   `;
@@ -886,7 +892,7 @@ function exportCSV() {
   const skins = colGetSkins();
   if (skins.length === 0) { alert('No skins in your collection yet!'); return; }
 
-  const headers = ['Name','Weapon','Build','Rarity','Tier','Tier Label','Est. Value (MFC)','Source','Season','Will Not Return'];
+  const headers = ['Name','Weapon','Build','Rarity','Tier','Tier Label','Est. Value (MBX)','Source','Season','Will Not Return'];
   const rows = skins.map(s => [
     s.full_name, s.weapon, s.build, s.rarity, s.tier,
     s.tier_label || TIER_LABELS[s.tier] || '',
