@@ -18,6 +18,13 @@ const RARITY_COLORS = {
 const TIER_ORDER   = { S: 0, A: 1, B: 2, C: 3, D: 4 };
 const RARITY_ORDER = { MYTHIC: 0, LEGENDARY: 1, EPIC: 2, RARE: 3, COMMON: 4 };
 
+const MBX_ICON = `<img src="assets/img/mbx-icon.png" class="mbx-icon" alt="MBX">`;
+
+function toFullSizeUrl(thumbUrl) {
+  if (!thumbUrl) return '';
+  return thumbUrl.replace('/thumb/', '/').replace(/\/\d+px-[^/]+$/, '');
+}
+
 // ── State ───────────────────────────────────────────────────────────────────
 
 let allSkins     = [];
@@ -345,7 +352,7 @@ function createCard(skin) {
   card.style.setProperty('--tier-border', tierBorder);
 
   const valueStr = skin.estimated_value > 0
-    ? `${skin.estimated_value.toLocaleString()} MFC`
+    ? `${skin.estimated_value.toLocaleString()} ${MBX_ICON}`
     : '—';
   const meta = getCardMeta(skin);
 
@@ -374,10 +381,18 @@ function createCard(skin) {
   // Image error fallback
   const img = card.querySelector('.card-img');
   img.addEventListener('error', () => {
-    const wrap = card.querySelector('.card-image-wrap');
-    if (wrap) wrap.classList.add('no-image');
-    img.remove();
-  });
+    const fullUrl = toFullSizeUrl(skin.image_url);
+    if (fullUrl && fullUrl !== skin.image_url) {
+      img.src = fullUrl;
+      img.addEventListener('error', () => {
+        card.querySelector('.card-image-wrap')?.classList.add('no-image');
+        img.remove();
+      }, { once: true });
+    } else {
+      card.querySelector('.card-image-wrap')?.classList.add('no-image');
+      img.remove();
+    }
+  }, { once: true });
 
   card.addEventListener('click', () => openModal(skin));
 
@@ -399,7 +414,15 @@ function openModal(skin) {
   const img = document.getElementById('modal-img');
   img.src = skin.image_url || '';
   img.alt = skin.full_name;
-  img.onerror = () => { img.style.opacity = '0.2'; };
+  img.onerror = () => {
+    const fullUrl = toFullSizeUrl(skin.image_url);
+    if (fullUrl && fullUrl !== img.src) {
+      img.src = fullUrl;
+      img.onerror = () => { img.style.opacity = '0.2'; };
+    } else {
+      img.style.opacity = '0.2';
+    }
+  };
 
   // Glow under image matches tier
   const glow = document.getElementById('modal-img-glow');
@@ -428,8 +451,8 @@ function openModal(skin) {
 
   // Value
   const valueNum = document.getElementById('modal-value-num');
-  valueNum.textContent = skin.estimated_value > 0
-    ? `${skin.estimated_value.toLocaleString()} MFC`
+  valueNum.innerHTML = skin.estimated_value > 0
+    ? `${skin.estimated_value.toLocaleString()} ${MBX_ICON}`
     : 'Unknown';
 
   // Details
@@ -651,7 +674,7 @@ function renderCollectionStats() {
   const countEl = document.getElementById('col-total-count');
   const valEl   = document.getElementById('col-total-value');
   if (countEl) countEl.textContent = `${skins.length} skin${skins.length !== 1 ? 's' : ''}`;
-  if (valEl)   valEl.textContent   = `${totalVal.toLocaleString()} MFC`;
+  if (valEl)   valEl.innerHTML     = `${totalVal.toLocaleString()} ${MBX_ICON}`;
 
   renderTierBreakdown(skins);
   renderRarityBreakdown(skins);
@@ -673,7 +696,7 @@ function renderTierBreakdown(skins) {
         <span>${tier} — ${TIER_LABELS[tier]}</span>
       </span>
       <span class="col-brow-count">${count}</span>
-      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MBX' : '—'}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' ' + MBX_ICON : '—'}</span>
     </div>`;
   }).join('');
 }
@@ -694,7 +717,7 @@ function renderRarityBreakdown(skins) {
         <span>${label}</span>
       </span>
       <span class="col-brow-count">${count}</span>
-      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' MBX' : '—'}</span>
+      <span class="col-brow-val">${val > 0 ? val.toLocaleString() + ' ' + MBX_ICON : '—'}</span>
     </div>`;
   }).join('');
 }
@@ -724,7 +747,7 @@ function renderHighlight(skins) {
   const best = skins.reduce((a, b) => b.estimated_value > a.estimated_value ? b : a);
   box.hidden = false;
   document.getElementById('col-highlight-name').textContent = best.full_name;
-  document.getElementById('col-highlight-val').textContent  = `${(best.estimated_value || 0).toLocaleString()} MFC`;
+  document.getElementById('col-highlight-val').innerHTML  = `${(best.estimated_value || 0).toLocaleString()} ${MBX_ICON}`;
 }
 
 function renderColList(skins) {
@@ -744,7 +767,7 @@ function renderColList(skins) {
         <div class="col-list-name">${escHtml(skin.name)}</div>
         <div class="col-list-sub">${escHtml(skin.weapon)} <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span></div>
       </div>
-      <span class="col-list-val">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MBX' : '—'}</span>
+      <span class="col-list-val">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' ' + MBX_ICON : '—'}</span>
       <button class="col-list-remove" data-id="${escHtml(skin.id)}" title="Remove">✕</button>
     </div>
   `).join('');
@@ -871,16 +894,24 @@ function createPickerCard(skin) {
       <div class="card-name">${escHtml(skin.name)}</div>
       <div class="card-footer">
         <span class="rarity-badge rarity-${skin.rarity.toLowerCase()}">${titleCase(skin.rarity)}</span>
-        <span class="card-value">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' MBX' : '—'}</span>
+        <span class="card-value">${skin.estimated_value > 0 ? skin.estimated_value.toLocaleString() + ' ' + MBX_ICON : '—'}</span>
       </div>
     </div>
   `;
 
   card.querySelector('.card-img').addEventListener('error', function() {
-    const wrap = card.querySelector('.card-image-wrap');
-    if (wrap) wrap.classList.add('no-image');
-    this.remove();
-  });
+    const fullUrl = toFullSizeUrl(skin.image_url);
+    if (fullUrl && fullUrl !== this.src) {
+      this.src = fullUrl;
+      this.addEventListener('error', () => {
+        card.querySelector('.card-image-wrap')?.classList.add('no-image');
+        this.remove();
+      }, { once: true });
+    } else {
+      card.querySelector('.card-image-wrap')?.classList.add('no-image');
+      this.remove();
+    }
+  }, { once: true });
 
   card.addEventListener('click', () => { colToggle(skin.id); refreshCollectionUI(); });
   return card;
@@ -926,9 +957,9 @@ function copyCollectionText() {
   const buildLine = ['Light','Medium','Heavy'].filter(b => bc[b]).map(b => `${b}: ${bc[b]}`).join('  ');
 
   const text = [
-    `My Finals Collection — ${skins.length} skin${skins.length !== 1 ? 's' : ''} · ${totalVal.toLocaleString()} MFC`,
+    `My Finals Collection — ${skins.length} skin${skins.length !== 1 ? 's' : ''} · ${totalVal.toLocaleString()} MBX`,
     '══════════════════════════════════════════════',
-    ...sorted.map(s => `[${s.tier}] ${s.full_name} · ${s.weapon} · ${s.rarity} · ~${(s.estimated_value || 0).toLocaleString()} MFC`),
+    ...sorted.map(s => `[${s.tier}] ${s.full_name} · ${s.weapon} · ${s.rarity} · ~${(s.estimated_value || 0).toLocaleString()} MBX`),
     '──────────────────────────────────────────────',
     tierLine,
     buildLine,
@@ -995,7 +1026,13 @@ const CURRENCIES = [
   { code: 'TRY', symbol: '₺',    name: 'Turkish Lira',        rate: 38.0   },
 ];
 
-const MBX_PACKS = [500, 1000, 2000, 5000, 11000];
+const MBX_PACKS = [
+  { mbx: 500,   eur: 4.99 },
+  { mbx: 1150,  eur: 9.99 },
+  { mbx: 2400,  eur: 19.99 },
+  { mbx: 6250,  eur: 49.99 },
+  { mbx: 13000, eur: 99.99 },
+];
 
 function setupConverter() {
   const sel = document.getElementById('conv-currency');
@@ -1077,9 +1114,9 @@ function renderPacks(cur) {
   const grid = document.getElementById('conv-packs-grid');
   if (!grid) return;
   grid.innerHTML = MBX_PACKS.map(pack => {
-    const price = pack * MBX_EUR_RATE * cur.rate;
+    const price = pack.eur * cur.rate;
     return `<div class="pack-card">
-      <div class="pack-mbx">${pack.toLocaleString()} <span class="pack-unit">MBX</span></div>
+      <div class="pack-mbx">${pack.mbx.toLocaleString()} <span class="pack-unit">MBX</span></div>
       <div class="pack-price">${fmtPrice(price, cur)}</div>
     </div>`;
   }).join('');

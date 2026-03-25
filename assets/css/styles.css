@@ -1809,3 +1809,28 @@ select { font-family: inherit; }
 @media (max-width: 480px) {
   .conv-packs-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── MBX Icon ─────────────────────────────────────────────────────────────── */
+.mbx-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-left: 2px;
+  opacity: 0.9;
+}
+
+/* ── Footer Legal ─────────────────────────────────────────────────────────── */
+.footer-legal {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 1rem;
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.7;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.footer-legal a { color: var(--text-dim); text-decoration: none; }
+.footer-legal a:hover { color: var(--accent); }
